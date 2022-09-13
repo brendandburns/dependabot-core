@@ -84,10 +84,14 @@ module Dependabot
       def correctly_encoded_yamlfiles
         candidate_files = yamlfiles.select { |f| f.content.valid_encoding? }
         candidate_files.select do |f|
-          # This doesn't handle multi-resource files, but it shouldn't matter, since the first resource
-          # in a multi-resource file had better be a valid k8s resource
-          content = ::YAML.safe_load(f.content, aliases: true)
-          likely_kubernetes_resource?(content)
+          if f.type == "file" && f.name == "values.yaml"
+            true
+          else
+            # This doesn't handle multi-resource files, but it shouldn't matter, since the first resource
+            # in a multi-resource file had better be a valid k8s resource
+            content = ::YAML.safe_load(f.content, aliases: true)
+            likely_kubernetes_resource?(content)
+          end
         rescue ::Psych::Exception
           false
         end

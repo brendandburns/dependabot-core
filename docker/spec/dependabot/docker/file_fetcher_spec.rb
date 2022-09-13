@@ -264,5 +264,34 @@ RSpec.describe Dependabot::Docker::FileFetcher do
           to match_array(%w(pod.yaml))
       end
     end
+
+    context "with a Helm values file" do
+      before do
+        stub_request(:get, url + "?ref=sha").
+          with(headers: { "Authorization" => "token token" }).
+          to_return(
+            status: 200,
+            body: fixture("github", "contents_helm_repo.json"),
+            headers: { "content-type" => "application/json" }
+          )
+  
+        stub_request(:get, File.join(url, "values.yaml?ref=sha")).
+          with(headers: { "Authorization" => "token token" }).
+          to_return(
+            status: 200,
+            body: values_fixture,
+            headers: { "content-type" => "application/json" }
+          )
+      end
+  
+      let(:values_fixture) { fixture("github", "contents_values_yaml.json") }
+      let(:options) { { kubernetes_updates: true } }
+  
+      it "fetches the values.yaml" do
+        expect(file_fetcher_instance.files.count).to eq(1)
+        expect(file_fetcher_instance.files.map(&:name)).
+          to match_array(%w(values.yaml))
+      end
+    end
   end
 end

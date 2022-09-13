@@ -1120,4 +1120,67 @@ RSpec.describe Dependabot::Docker::FileUpdater do
       end
     end
   end
+  let(:helm_updater) do
+    described_class.new(
+      dependency_files: helm_files,
+      dependencies: [helm_dependency],
+      credentials: credentials
+    )
+  end
+  let(:helm_files) { [helmfile] }
+  let(:credentials) do
+    [{
+      "type" => "git_source",
+      "host" => "github.com",
+      "username" => "x-access-token",
+      "password" => "token"
+    }]
+  end
+  let(:helmfile) do
+    Dependabot::DependencyFile.new(
+      content: helmfile_body,
+      name: "values.yaml"
+    )
+  end
+  let(:helmfile_body) { fixture("helm", "yaml", "values.yaml") }
+  let(:helm_dependency) do
+    Dependabot::Dependency.new(
+      name: "ubuntu",
+      version: "17.10",
+      previous_version: "17.04",
+      requirements: [{
+        requirement: nil,
+        groups: [],
+        file: "multiple.yaml",
+        source: { tag: "17.10" }
+      }],
+      previous_requirements: [{
+        requirement: nil,
+        groups: [],
+        file: "multiple.yaml",
+        source: { tag: "17.04" }
+      }],
+      package_manager: "kubernetes"
+    )
+  end
+
+  describe "#updated_dependency_files" do
+    subject(:updated_files) { helm_updater.updated_dependency_files }
+
+    it "returns DependencyFile objects" do
+      updated_files.each { |f| expect(f).to be_a(Dependabot::DependencyFile) }
+    end
+
+    its(:length) { is_expected.to eq(1) }
+
+    describe "the updated podfile" do
+      subject(:updated_podfile) do
+        updated_files.find { |f| f.name == "values.yaml" }
+      end
+
+      its(:content) { is_expected.to include "image: ubuntu:17.10\n" }
+      its(:content) { is_expected.to include "image: nginx:1.14.2\n" }
+      its(:content) { is_expected.to include "kind: Pod" }
+    end
+  end
 end
